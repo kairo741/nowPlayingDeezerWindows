@@ -366,6 +366,38 @@ EOF
     read -p "Press Enter to return to the main menu..."
 }
 
+start_app() {
+    info "Checking if the application is already running..."
+    pid=$(ps aux | grep "[n]ode.*npm start" | awk '{print $2}')
+
+    if [ -n "$pid" ]; then
+        warning "The application is already running with PID: $pid"
+        return 1
+    fi
+
+    # Check if .env file exists
+    if [ ! -f .env ]; then
+        error "No .env file found. Please install the application first."
+        return 1
+    fi
+
+    launch_app
+
+    clear_and_show_logo
+    print_fancy_box "Application Started"
+    port=$(grep "PORT=" .env | cut -d '=' -f2)
+    success "The application is now running on port $port."
+    info "You can access the application at http://localhost:$port/now-playing"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        warning "Make sure Deezer is running in Google Chrome when you use the application."
+    else
+        warning "Make sure Deezer is running when you use the application."
+    fi
+
+    echo
+    read -p "Press Enter to return to the main menu..."
+}
+
 main() {
     while true; do
         clear_and_show_logo
@@ -375,11 +407,12 @@ main() {
         print_fancy_box "Main Menu"
         echo -e "${CYAN}1.${RESET} Install and configure the application"
         echo -e "${CYAN}2.${RESET} Stop the application"
-        echo -e "${CYAN}3.${RESET} Update .env and restart application"
-        echo -e "${CYAN}4.${RESET} Quit"
+        echo -e "${CYAN}3.${RESET} Start the application"
+        echo -e "${CYAN}4.${RESET} Update .env and restart application"
+        echo -e "${CYAN}5.${RESET} Quit"
         echo
 
-        read -p "$(echo -e ${YELLOW}"Choose an option (1-4) : "${RESET})" choice
+        read -p "$(echo -e ${YELLOW}"Choose an option (1-5) : "${RESET})" choice
 
         case $choice in
             1)
@@ -390,14 +423,17 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             3)
-                update_env_and_restart
+                start_app
                 ;;
             4)
+                update_env_and_restart
+                ;;
+            5)
                 echo "Goodbye!"
                 exit 0
                 ;;
             *)
-                error "Invalid option. Please choose 1, 2, 3, or 4."
+                error "Invalid option. Please choose 1, 2, 3, 4, or 5."
                 read -p "Press Enter to continue..."
                 ;;
         esac
