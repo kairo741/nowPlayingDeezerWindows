@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Now Playing - Colorz Rounded</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+            rel="stylesheet"
+        />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.2/color-thief.umd.js"></script>
+        <style>
+            * {
+                padding: 0;
+                margin: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: "Roboto", sans-serif;
+                background-color: transparent; /* Transparent pour OBS */
+                height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .now-playing-container {
+                width: 400px;
+                height: 120px;
+                display: flex;
+                align-items: center;
+                background: #f7931e; /* Couleur par défaut */
+                border-radius: 0px; /* Pas de coins arrondis */
+                padding: 0;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); /* Ombre subtile */
+                position: relative;
+                transition: background-color 0.5s ease, color 0.5s ease; /* Transition pour un effet fluide */
+                border-radius: 20px;
+            }
+
+            .music-cover {
+                width: 100px;
+                height: 120px;
+                margin: 0; /* Pas de marge */
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Ombre pour l'image */
+                flex-shrink: 0;
+                object-fit: cover; /* L'image remplit bien le conteneur */
+                border-top-left-radius: 20px;
+                border-bottom-left-radius: 20px;
+            }
+
+            .music-body {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                flex: 1;
+                padding: 10px;
+                overflow: hidden;
+            }
+
+            .music-name,
+            .music-artist {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                transition: color 0.5s ease; /* Transition pour un effet fluide */
+            }
+
+            .music-name {
+                font-size: 1.2em;
+                font-weight: 700;
+            }
+
+            .music-artist {
+                font-size: 1em;
+                font-weight: 400;
+            }
+
+            /* Couleurs par défaut */
+            .text-light {
+                color: #fff; /* Texte blanc */
+            }
+
+            .text-dark {
+                color: #000; /* Texte noir */
+            }
+        </style>
+    </head>
+    <body>
+        <div class="now-playing-container" id="now-playing-container">
+            <img
+                id="cover"
+                class="music-cover"
+                crossOrigin="anonymous"
+            />
+            <div class="music-body">
+                <div class="music-name text-light" id="title"></div>
+                <div class="music-artist text-light" id="artist"></div>
+            </div>
+        </div>
+        <script>
+            const colorThief = new ColorThief();
+            const coverElement = document.getElementById("cover");
+            const containerElement = document.getElementById("now-playing-container");
+            const titleElement = document.getElementById("title");
+            const artistElement = document.getElementById("artist");
+
+            let currentTitle = "";
+            let currentArtist = "";
+            let currentCoverUrl = "";
+
+            function getLuminance(color) {
+                // Calcule la luminosité relative de la couleur
+                const [r, g, b] = color.map((v) => v / 255);
+                const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                return luminance;
+            }
+
+            function setDynamicBackground() {
+                if (coverElement.complete) {
+                    const dominantColor = colorThief.getColor(coverElement);
+                    containerElement.style.backgroundColor = `rgb(${dominantColor.join(",")})`;
+
+                    // Ajuste la couleur du texte en fonction de la luminosité
+                    const luminance = getLuminance(dominantColor);
+                    if (luminance > 0.5) {
+                        // Couleur de fond claire, texte foncé
+                        titleElement.classList.remove("text-light");
+                        artistElement.classList.remove("text-light");
+                        titleElement.classList.add("text-dark");
+                        artistElement.classList.add("text-dark");
+                    } else {
+                        // Couleur de fond foncée, texte clair
+                        titleElement.classList.remove("text-dark");
+                        artistElement.classList.remove("text-dark");
+                        titleElement.classList.add("text-light");
+                        artistElement.classList.add("text-light");
+                    }
+                } else {
+                    coverElement.addEventListener("load", () => {
+                        const dominantColor = colorThief.getColor(coverElement);
+                        containerElement.style.backgroundColor = `rgb(${dominantColor.join(",")})`;
+
+                        const luminance = getLuminance(dominantColor);
+                        if (luminance > 0.5) {
+                            titleElement.classList.remove("text-light");
+                            artistElement.classList.remove("text-light");
+                            titleElement.classList.add("text-dark");
+                            artistElement.classList.add("text-dark");
+                        } else {
+                            titleElement.classList.remove("text-dark");
+                            artistElement.classList.remove("text-dark");
+                            titleElement.classList.add("text-light");
+                            artistElement.classList.add("text-light");
+                        }
+                    });
+                }
+            }
+
+            function refreshContent() {
+                fetch("/now-playing-data")
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (
+                            data.title &&
+                            data.artist &&
+                            (data.title !== currentTitle ||
+                                data.artist !== currentArtist ||
+                                data.coverUrl !== currentCoverUrl)
+                        ) {
+                            titleElement.textContent = data.title;
+                            artistElement.textContent = data.artist;
+                            coverElement.src = data.coverUrl || coverElement.src;
+
+                            currentTitle = data.title;
+                            currentArtist = data.artist;
+                            currentCoverUrl = data.coverUrl;
+
+                            // Met à jour la couleur dynamique
+                            setDynamicBackground();
+                        }
+                    })
+                    .catch((error) => console.error("Error fetching data:", error));
+            }
+
+            refreshContent();
+            setInterval(refreshContent, 5000);
+        </script>
+    </body>
+</html>
