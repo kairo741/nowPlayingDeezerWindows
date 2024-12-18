@@ -120,8 +120,24 @@ async function getNowPlaying(): Promise<NowPlayingData> {
 
 app.use(express.static(path.join(__dirname, "..", "public")));
 
-app.get("/now-playing", (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, "..", "public", "now-playing.html"));
+app.get("/now-playing/:theme?", (req, res) => {
+  const theme = req.params.theme || "default";
+  const themeFile = `${theme}-theme.html`;
+
+  const filePath = path.join(__dirname, "public", themeFile);
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error(`Fichier non trouvé : ${filePath}`);
+      // Charge le thème par défaut en cas d'erreur
+      const defaultFilePath = path.join(__dirname, "public", "default-theme.html");
+      res.sendFile(defaultFilePath, (defaultErr) => {
+        if (defaultErr) {
+          console.error(`Fichier par défaut non trouvé : ${defaultFilePath}`);
+          res.status(404).send("Aucun thème disponible.");
+        }
+      });
+    }
+  });
 });
 
 app.get("/now-playing-data", async (req: Request, res: Response) => {
