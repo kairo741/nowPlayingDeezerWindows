@@ -88,30 +88,47 @@ if %NEED_BUILD% equ 1 (
 )
 
 :: Copiar pasta pública se necessário
-if exist ./src/public (
+if exist .\src\public (
+    echo Verificando pasta pública...
     if not exist dist\public (
         echo Copiando arquivos públicos...
-        xcopy /E /I /Y ./src/public dist\public\ >nul
+        xcopy /E /I /Y .\src\public dist\public\
         echo Pasta public copiada para dist/public/
     ) else (
-        :: Verificar se há arquivos novos na pasta public
-        set PUBLIC_NEWER=0
-        for /f "tokens=*" %%F in ('dir /s /b ./src/public\* 2^>nul') do (
-            if "%%~tF" gtr "%~t0" (
-                set PUBLIC_NEWER=1
+        :: Verificar se há arquivos novos ou modificados na pasta public
+        set NEED_COPY=0
+
+        :: Verificar se há arquivos em src/public que não existem em dist/public
+        for /f "tokens=*" %%F in ('dir /s /b /a-d .\src\public\* 2^>nul') do (
+            set "SRC_FILE=%%F"
+            set "DEST_FILE=dist\public\%%~pnxF"
+            if not exist "!DEST_FILE!" (
+                set NEED_COPY=1
+                goto :copy_check_done
             )
         )
 
-        if !PUBLIC_NEWER! equ 1 (
+        :: Verificar se há arquivos em dist/public que não existem mais em src/public
+        for /f "tokens=*" %%F in ('dir /s /b /a-d dist\public\* 2^>nul') do (
+            set "DEST_FILE=%%F"
+            set "SRC_FILE=.\src\public\%%~pnxF"
+            if not exist "!SRC_FILE!" (
+                set NEED_COPY=1
+                goto :copy_check_done
+            )
+        )
+
+        :copy_check_done
+        if !NEED_COPY! equ 1 (
             echo Atualizando arquivos públicos...
-            xcopy /E /I /Y ./src/public dist\public\ >nul
+            robocopy .\src\public dist\public /MIR /NJH /NJS /NP >nul
             echo Arquivos públicos atualizados.
         ) else (
             echo Arquivos públicos já estão atualizados.
         )
     )
 ) else (
-    echo Aviso: Pasta public não encontrada.
+    echo Aviso: Pasta src\public não encontrada.
 )
 
 echo.
